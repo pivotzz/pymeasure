@@ -150,46 +150,4 @@ class CryoProcedure(Procedure):
         
 
 
-class CryoMeasurementWindow(ManagedWindow):
-    def __init__(self):
-        super().__init__(
-            procedure_class=CryoProcedure,
-            inputs=[
-                "min_temperature",
-                "max_temperature",
-                "ramp_rate",
-                "resistance_range",
-                "time_per_measurement",
-                "num_plc",
-                "power_amp",
-            ],
-            displays=[
-                "min_temperature",
-                "max_temperature",
-                "ramp_rate",
-                "resistance_range",
-                "time_per_measurement",
-                "num_plc",
-                "power_amp",
-            ],
-            x_axis="Temperature (K)",
-            y_axis="Resistance (ohm)",
-        )
-        self.setWindowTitle("Temperature Sweep Measurement")
-
-    def queue(self, procedure=None):
-        directory = "./"  # Change this to the desired directory
-        filename = unique_filename(directory, prefix="T_SWEEP")
-
-        procedure = self.make_procedure()
-        results = Results(procedure, filename)
-        experiment = self.new_experiment(results)
-
-        self.manager.queue(experiment)
-
-
-if __name__ == "__main__":
-    app = QtWidgets.QApplication([])
-    window = CryoMeasurementWindow()
-    window.show()
-    app.exec_()
+   
