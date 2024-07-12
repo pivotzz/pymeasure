@@ -1,9 +1,0 @@
-#Procedure: <__main__.TempController>
-#Parameters:
-#	Maximum temperature: 300 K
-#	Minimum temperature: 300 K
-#	Temperature ramp rate: 0.5 K/min
-#	Time per measurement: 0.1 s
-#Data:
-Elapsed Time (s),Temperature (K)
-0.12367653846740723,299.07

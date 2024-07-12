@@ -1,8 +1,9 @@
-A = 1
-B = 10
 
-while A < B:
-    A = A + 1
-    print(A)
-    if A == 5:
-        A = A
+
+from lakeshore import Model335
+
+
+
+temp_controller = Model335(com_port="COM3", baud_rate=57600)
+temperature = temp_controller.get_heater_output(1)
+print(temperature)

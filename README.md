@@ -1,2 +1,0 @@
-# pymeasure
- instrumentation code
