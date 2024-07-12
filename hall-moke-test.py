@@ -1,5 +1,6 @@
 import sys
 import os
+import time
 
 print(sys.path)
 sys.path.append("/Users/pvtz/Documents/GitHub/pymeasure")
@@ -33,19 +34,15 @@ class TempController(Procedure):
     """
 
     # Parameters for the experiment, saved in csv
-    min_temperature = FloatParameter("Minimum temperature", units="K", default=10)
-    max_temperature = FloatParameter("Maximum temperature", units="K", default=15)
+    min_temperature = FloatParameter("Minimum temperature", units="K", default=305)
+    max_temperature = FloatParameter("Maximum temperature", units="K", default=310)
     ramp_rate = FloatParameter("Temperature ramp rate", units="K/min", default=0.5)
-    resistance_range = FloatParameter("Resistance Range", units="Ohm", default=200000)
     time_per_measurement = FloatParameter(
         "Time per measurement", units="s", default=0.1
     )
-    num_plc = FloatParameter(
-        "Number of power line cycles aka. measurement accuracy (0.1/1/10)", default=1
-    )
 
     # These are the data values that will be measured/collected in the experiment
-    DATA_COLUMNS = ["Temperature (K)", "Resistance (ohm)"]
+    DATA_COLUMNS = ["Elapsed Time (s)", "Temperature (K)"]
 
     def startup(self):
         """
@@ -54,7 +51,7 @@ class TempController(Procedure):
         log.info("Starting up the experiment.")
         # Initialize the instruments
         try:
-            self.temp_controller = Model335(com_port="COM3", baud_rate = 57600)
+            self.temp_controller = Model335(com_port="COM3")
             # Configure LS335 and stabilize at min_temperature
             self.temp_controller.set_control_setpoint(1, self.min_temperature)
             self.temp_controller.set_heater_range(1, self.temp_controller.HeaterRange.LOW)
@@ -68,32 +65,50 @@ class TempController(Procedure):
         Emits results with the data values defined in DATA_COLUMNS.
         """
         log.info("Executing experiment.")
+        start_time = time.time()
+        
         try:
             # Start ramping
             self.temp_controller.set_control_setpoint(1, self.max_temperature)
             self.temp_controller.set_heater_range(1, self.temp_controller.HeaterRange.HIGH)
             self.temp_controller.set_setpoint_ramp_parameter(1, True, self.ramp_rate)
             
-            temperature = self.temp_controller.get_all_kelvin_reading()[0]
-            self.emit("results", {"Temperature (K)": temperature})
+            # Main loop
+            while True:
+                sleep(self.time_per_measurement)  # wait for the specified measurement time
+                elapsed_time = time.time() - start_time
+                temperature = self.temp_controller.get_all_kelvin_reading()[0]  # Get sample stage temperature
+
+                self.emit(
+                    "results",
+                    {"Elapsed Time (s)": elapsed_time, "Temperature (K)": temperature},
+                )
+
+                # stop measuring once reached max temperature
+                if abs(temperature - self.max_temperature) < 0.1:
+                    break
+
+                if self.should_stop():
+                    log.warning("Catch stop command in procedure")
+                    self.temp_controller.all_heaters_off()
+                    break
+
         except Exception as e:
             log.error(f"Error during execution: {e}")
             raise
+
+        log.info("Experiment executed")
 
     def shutdown(self):
         """
         Shutdown all machines.
         """
-        log.info("Shutting down the experiment.")
-        try:
-            if hasattr(self, 'temp_controller'):
-                self.temp_controller.set_control_setpoint(1, 0)
-                self.temp_controller.all_heaters_off()
-            else:
-                log.warning("TempController was not initialized.")
-        except Exception as e:
-            log.error(f"Error during shutdown: {e}")
-            raise
+        log.info("Shutting down")
+        if hasattr(self, 'temp_controller'):
+            self.temp_controller.set_control_setpoint(1, 0)
+            self.temp_controller.all_heaters_off()
+        else:
+            log.error("temp_controller is not initialized.")
 
 
 class TempMeasurementWindow(ManagedWindow):
@@ -105,17 +120,15 @@ class TempMeasurementWindow(ManagedWindow):
                 "max_temperature",
                 "ramp_rate",
                 "time_per_measurement",
-                "num_plc",
             ],
             displays=[
                 "min_temperature",
                 "max_temperature",
                 "ramp_rate",
                 "time_per_measurement",
-                "num_plc",
             ],
-            x_axis="Temperature (K)",
-            y_axis="Resistance (ohm)",
+            x_axis="Elapsed Time (s)",
+            y_axis="Temperature (K)",
         )
         self.setWindowTitle("Temperature Sweep Measurement")
 
