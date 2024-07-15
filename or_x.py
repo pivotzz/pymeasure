@@ -67,3 +67,5 @@ if __name__ == "__main__":
     fg.enable_output()
     
     fg.close()
+
+main()
