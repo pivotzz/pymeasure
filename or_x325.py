@@ -5,8 +5,27 @@ import time
 port = "/dev/cu.usbserial-AB0NF8HO"  # Correct port name
 baudrate = 9600  # Replace with your baud rate
 
-# Initialize serial connection
-ser = serial.Serial(port, baudrate, timeout=2)  # Increased timeout to 2 seconds
+try:
+    # Initialize serial connection
+    ser = serial.Serial(port, baudrate, timeout=2)  # Increased timeout to 2 seconds
+    print(f"Opened serial port {port} at {baudrate} baud.")
+except Exception as e:
+    print(f"Failed to open serial port {port}: {e}")
+    exit()
+
+# Function to send a command and read the response
+def send_command(command):
+    print(f"Sending command: {command}")
+    command = command + "\r"  # Append \r for EOS terminator
+    ser.write(command.encode('utf-8'))
+    time.sleep(1)  # Delay depending on device response time
+    response = ""
+    while ser.in_waiting > 0:
+        response_chunk = ser.read(ser.in_waiting).decode('utf-8')
+        response += response_chunk
+        time.sleep(0.1)  # Small delay to ensure complete response
+    print(f"Raw response: {response}")
+    return response.strip()
 
 # Check if the connection is open
 if ser.isOpen():
@@ -15,21 +34,18 @@ if ser.isOpen():
     # Example commands
     commands = [
         "*IDN?",                # Query device identification
-        "SOURCE:FREQ 200HZ"     # Set frequency to 200 Hz
+        "SOURCE:FREQ 200HZ",    # Set frequency to 200 Hz
+        "SOURCE:VOLTAGE 2"      # Set amplitude to 2V
     ]
 
     for command in commands:
-        # Send command with appropriate termination
-        command = command + "\r\n"  # Append \r\n for EOS terminator
-        ser.write(command.encode('utf-8'))
-        time.sleep(1)  # Optional delay depending on device response time
+        response = send_command(command)
+        print(f"Response to {command.strip()}: {response}")
 
-        # Read response
-        response = ""
-        while ser.in_waiting > 0:
-            response += ser.read(ser.in_waiting).decode('utf-8')
-            time.sleep(1)  # Small delay to ensure complete response
-        print(f"Sent command: {command.strip()}, Response: {response.strip()}")
+    # Read back the amplitude to verify
+    print("Reading back amplitude...")
+    amplitude_response = send_command("SOURCE:VOLTAGE?")
+    print(f"Amplitude readback: {amplitude_response}")
 
     # Close serial connection
     ser.close()
